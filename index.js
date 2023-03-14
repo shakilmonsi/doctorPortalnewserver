@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 require("dotenv").config();
 
@@ -19,6 +20,13 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
   serverApi: ServerApiVersion.v1,
 });
+function verifyJWT(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authorization) {
+    return res.send(401).send("unauthorized access");
+  }
+  const token = authHeader.split(" ")[1];
+}
 async function run() {
   try {
     const appointmentOptionCollection = client
@@ -52,8 +60,23 @@ async function run() {
       });
       res.send(options);
     });
-    app.get("/bookings", async (req, res) => {
+
+    // JWT AND ADD OK
+    app.get("/jwt", async (req, res) => {
       const email = req.query.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      if (user) {
+        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {
+          expiresIn: "1h",
+        });
+        return res.send({ accessToken: token });
+      }
+      res.status(403).send({ accessToken: " " });
+    });
+    app.get("/bookings", verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      console.log("token", req.headers.authorization);
       console.log(email);
       const query = { email: email };
       const bookings = await bookingsCollection.find(query).toArray();
